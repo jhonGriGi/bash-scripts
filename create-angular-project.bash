@@ -204,8 +204,8 @@ EOL
 echo "📝 Creando configuración Prettier..."
 cat > .prettierrc <<EOL
 {
-  "tabWidth": 4,
-  "useTabs": true,
+  "tabWidth": 2,
+  "useTabs": false,
   "singleQuote": true,
   "semi": true,
   "bracketSpacing": true,
@@ -251,6 +251,33 @@ EOL
 # Agregar script lint:fix al package.json
 echo "🔧 Agregando script 'lint:fix' en package.json..."
 npx npm-add-script -k "lint:fix" -v "ng lint --fix"
+
+echo "📝 Creando carpetas de arquitectura limpia"
+ng g c UI/main/
+mkdir src/app/config src/app/domain src/app/domain/models src/app/domain/use-cases src/app/infrastructure/ src/app/infrastructure/driven-adapter src/app/infrastructure/helpers src/app/UI/design-system src/app/UI/pages
+rm app.component.html app.component.scss app.component.spec.ts app.component.ts
+mv src/app/app.config.ts src/app/config/app.config.ts
+mv src/app/app.routes.ts src/app/config/app.routes.ts
+
+
+echo "🔧 Revisa el main.ts para corregir los TODO"
+{
+  echo '// TODO: cambia AppComponent por MainComponent'
+  echo '// TODO: Actualiza el import de appConfig'
+  echo '// TODO: Agrega RouterOutlet al MainComponent'
+  cat main.ts
+} > main.tmp && mv main.tmp src/main.ts
+
+mkdir src/app/shared src/app/shared/presentation src/app/shared/infra src/app/shared/domain
+
+# Crear carpeta .vscode y settings.json
+echo "📝 Configurando Mapper abstracto."
+cat > src/app/infrastructure/helpers/mapper/mapper.ts <<EOL
+export abstract class Mapper<I, O> {
+    abstract mapFromModel(param: I): O;
+    abstract mapToModel(param: O): I;
+}
+EOL
 
 # Mensaje final
 echo "🎉 Proyecto Angular creado exitosamente con ESLint + Prettier + configuraciones de VSCode listas."
