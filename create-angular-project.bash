@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e # Salir inmediatamente si un comando falla
+
 # Nombre del proyecto
 PROJECT_NAME=$1
 
@@ -32,22 +34,31 @@ cd "$PROJECT_NAME"
 echo "🔧 Instalando Angular ESLint..."
 ng add @angular-eslint/schematics --skip-confirmation
 
-# Instalar Prettier y dependencias relacionadas
-echo "🔧 Instalando Prettier y dependencias de ESLint/Prettier..."
-npm install prettier prettier-eslint eslint-config-prettier eslint-plugin-prettier -D
-
-# Plugins necesarios
-npm install @typescript-eslint/eslint-plugin @typescript-eslint/parser eslint-plugin-simple-import-sort eslint-plugin-unused-imports eslint-plugin-import eslint-import-resolver-typescript -D
+# Instalar Prettier, ESLint y plugins
+echo "🔧 Instalando Prettier, ESLint y plugins adicionales..."
+npm install -D \
+  prettier \
+  prettier-eslint \
+  eslint-config-prettier \
+  eslint-plugin-prettier \
+  @typescript-eslint/eslint-plugin \
+  @typescript-eslint/parser \
+  eslint-plugin-simple-import-sort \
+  eslint-plugin-unused-imports \
+  eslint-plugin-import \
+  eslint-import-resolver-typescript
 
 # Auditando dependencias
-npm audit fix --force
+npm audit fix --force || echo "⚠️  Algunas vulnerabilidades no se pudieron corregir automáticamente."
 
-# Eliminando configuracion eslint anterior
-rm eslint.config.js
+# Eliminar configuración antigua de ESLint si existe
+if [ -f "eslint.config.js" ]; then
+  rm eslint.config.js
+fi
 
 # Crear archivo .eslintrc.json
 echo "📝 Creando configuración ESLint..."
-cat > .eslintrc.json <<EOL
+cat > .eslintrc.json << 'EOF'
 {
   "root": true,
   "ignorePatterns": ["projects/**/*"],
@@ -197,12 +208,11 @@ cat > .eslintrc.json <<EOL
     }
   ]
 }
-
-EOL
+EOF
 
 # Crear archivo .prettierrc
 echo "📝 Creando configuración Prettier..."
-cat > .prettierrc <<EOL
+cat > .prettierrc << 'EOF'
 {
   "tabWidth": 2,
   "useTabs": false,
@@ -214,20 +224,19 @@ cat > .prettierrc <<EOL
   "bracketSameLine": true,
   "printWidth": 80
 }
-
-EOL
+EOF
 
 # Crear archivo .prettierignore
 echo "📝 Creando archivo .prettierignore..."
-cat > .prettierignore <<EOL
+cat > .prettierignore << 'EOF'
 dist
 node_modules
-EOL
+EOF
 
 # Crear carpeta .vscode y settings.json
 echo "📝 Configurando VSCode settings..."
 mkdir -p .vscode
-cat > .vscode/settings.json <<EOL
+cat > .vscode/settings.json << 'EOF'
 {
   "[html]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
@@ -246,7 +255,35 @@ cat > .vscode/settings.json <<EOL
   "editor.suggest.snippetsPreventQuickSuggestions": false,
   "editor.inlineSuggest.enabled": true
 }
-EOL
+EOF
+
+# Agrega un .editorconfig
+cat > .editorconfig << 'EOF'
+# Editor configuration, see https://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+indent_style = tab
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# The indent size used in the `package.json` file cannot be changed
+# https://github.com/npm/npm/pull/3180#issuecomment-16336516
+[{*.yml,*.yaml,package.json}]
+indent_style = space
+indent_size = 2
+
+[*.ts]
+quote_type = single
+ij_typescript_use_double_quotes = false
+
+[*.md]
+max_line_length = off
+trim_trailing_whitespace = false
+EOF
+
 
 # Agregar script lint:fix al package.json
 echo "🔧 Agregando script 'lint:fix' en package.json..."
@@ -255,29 +292,50 @@ npx npm-add-script -k "lint:fix" -v "ng lint --fix"
 echo "📝 Creando carpetas de arquitectura limpia"
 ng g c UI/main/
 mkdir src/app/config src/app/domain src/app/domain/models src/app/domain/use-cases src/app/infrastructure/ src/app/infrastructure/driven-adapter src/app/infrastructure/helpers src/app/UI/design-system src/app/UI/pages
-rm app.component.html app.component.scss app.component.spec.ts app.component.ts
+rm src/app/app.component.html src/app/app.component.scss src/app/app.component.spec.ts src/app/app.component.ts
 mv src/app/app.config.ts src/app/config/app.config.ts
 mv src/app/app.routes.ts src/app/config/app.routes.ts
 
 
-echo "🔧 Revisa el main.ts para corregir los TODO"
-{
-  echo '// TODO: cambia AppComponent por MainComponent'
-  echo '// TODO: Actualiza el import de appConfig'
-  echo '// TODO: Agrega RouterOutlet al MainComponent'
-  cat main.ts
-} > main.tmp && mv main.tmp src/main.ts
+echo "🔧 Configurando archivo main.ts"
+cat > src/main.ts << 'EOF'
+import { bootstrapApplication } from '@angular/platform-browser';
+import { MainComponent } from './app/UI/main/main.component';
+import { appConfig } from './app/config/app.config';
 
-mkdir src/app/shared src/app/shared/presentation src/app/shared/infra src/app/shared/domain
+bootstrapApplication(MainComponent, appConfig)
+    .catch((err) => console.error(err));
+EOF
+
+cat > src/app/UI/main/main.component.html << 'EOF'
+<router-outlet></router-outlet>
+EOF
+
+cat > src/app/UI/main/main.component.ts << 'EOF'
+import { Component } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [RouterOutlet],
+  templateUrl: './main.component.html',
+  styleUrl: './main.component.scss'
+})
+export class MainComponent {
+
+}
+EOF
 
 # Crear carpeta .vscode y settings.json
 echo "📝 Configurando Mapper abstracto."
-cat > src/app/infrastructure/helpers/mapper/mapper.ts <<EOL
+mkdir src/app/infrastructure/helpers/mapper
+cat > src/app/infrastructure/helpers/mapper/mapper.ts << 'EOF'
 export abstract class Mapper<I, O> {
     abstract mapFromModel(param: I): O;
     abstract mapToModel(param: O): I;
 }
-EOL
+EOF
 
 # Mensaje final
 echo "🎉 Proyecto Angular creado exitosamente con ESLint + Prettier + configuraciones de VSCode listas."
