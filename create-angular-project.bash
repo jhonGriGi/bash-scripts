@@ -46,7 +46,8 @@ npm install -D \
   eslint-plugin-simple-import-sort \
   eslint-plugin-unused-imports \
   eslint-plugin-import \
-  eslint-import-resolver-typescript
+  eslint-import-resolver-typescript \
+  puppeteer
 
 # Auditando dependencias
 npm audit fix --force || echo "⚠️  Algunas vulnerabilidades no se pudieron corregir automáticamente."
@@ -286,11 +287,16 @@ EOF
 
 
 # Agregar script lint:fix al package.json
+# Agregar script test:ci al package.json
 echo "🔧 Agregando script 'lint:fix' en package.json..."
+echo "🔧 Agregando script 'test:ci' en package.json..."
 npx npm-add-script -k "lint:fix" -v "ng lint --fix"
+npx npm-add-script -k "test:ci" -v "ng test --no-watch --no-progress --browsers=ChromeHeadless --code-coverage"
 
 echo "📝 Creando carpetas de arquitectura limpia"
 ng g c UI/main/
+ng g config karma
+sed -i '1i process.env.CHROME_BIN = require("puppeteer").executablePath();' karma.conf.js
 mkdir src/app/config src/app/domain src/app/domain/models src/app/domain/use-cases src/app/infrastructure/ src/app/infrastructure/driven-adapter src/app/infrastructure/helpers src/app/UI/design-system src/app/UI/pages
 rm src/app/app.component.html src/app/app.component.scss src/app/app.component.spec.ts src/app/app.component.ts
 mv src/app/app.config.ts src/app/config/app.config.ts
