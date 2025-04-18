@@ -191,9 +191,69 @@ trim_trailing_whitespace = false
 EOF
 
 echo "📝 Creando archivos y carpetas de clean architecture"
-mkdir src src/domain src/domain/models src/domain/ports src/domain/ports/gateways src/domain/ports/utils src/domain/commands src/domain/queries src/driven-adapters src/driven-adapters/tests src/entry-points src/entry-points/tests src/libraries
+mkdir src src/domain src/domain/models src/domain/models/either src/domain/ports src/domain/ports/gateways src/domain/ports/utils src/domain/commands src/domain/queries src/driven-adapters src/driven-adapters/tests src/entry-points src/entry-points/tests src/libraries
 cat > src/main.ts << 'EOF'
 console.log("Hello World")
+EOF
+
+cat > src/domain/models/either/value-types.ts << 'EOF'
+import { Either } from './either';
+
+export type Ok<T> = Either<T, never>;
+export type ErrorType<E> = Either<never, E>;
+EOF
+cat > src/domain/models/either/either.ts << 'EOF'
+import { ErrorType, Ok } from './value-types';
+
+interface FoldExpression<R, E, T> {
+	fnError: (error: E) => R;
+	fnOk: (value: T) => R;
+}
+
+export class Either<T, E> {
+	private constructor(
+		private readonly value?: T,
+		private readonly error?: E
+	) {}
+
+	static Ok<T>(value: T): Ok<T> {
+		return new Either(value);
+	}
+
+	static Error<E>(error: E): ErrorType<E> {
+		return new Either(null as never, error);
+	}
+
+	public isOk(): this is Ok<T> {
+		return this.value !== undefined;
+	}
+
+	public isError(): this is ErrorType<E> {
+		return this.error !== undefined;
+	}
+
+	public getValue(): T {
+		if (!this.isOk()) {
+			throw new Error('Cannot access value in a non-Ok instance');
+		}
+
+		return this.value!;
+	}
+
+	public getError(): E {
+		if (!this.isError()) {
+			throw new Error('Cannot access error in a non-Error instance');
+		}
+
+		return this.error!;
+	}
+
+	public fold<R>(expressions: FoldExpression<R, E, T>): R {
+		return this.isError()
+			? expressions.fnError(this.error!)
+			: expressions.fnOk(this.value!);
+	}
+}
 EOF
 
 # Comando para crear proyecto
@@ -203,153 +263,131 @@ echo "🚀 Agregando Eslint y Prettier"
 echo "📝 Creando configuración ESLint..."
 cat > .eslintrc.json << 'EOF'
 {
-  "root": true,
-  "ignorePatterns": ["projects/**/*"],
-  "overrides": [
-    {
-      "files": ["*.ts"],
-      "parserOptions": {
-        "project": ["tsconfig.json"],
-        "createDefaultProgram": true
-      },
-      "settings": {
-        "import/resolver": {
-          "typescript": {}
-        }
-      },
-      "plugins": [
-        "@typescript-eslint",
-        "simple-import-sort",
-        "import",
-        "unused-imports"
-      ],
-      "extends": [
-        "plugin:@angular-eslint/recommended",
-        "plugin:@angular-eslint/template/process-inline-templates",
-        "plugin:prettier/recommended",
-        "plugin:@typescript-eslint/recommended",
-        "plugin:import/recommended",
-        "plugin:import/typescript"
-      ],
-      "rules": {
-        "@angular-eslint/component-class-suffix": [
-          "error",
-          {
-            "suffixes": ["Page", "Component"]
-          }
-        ],
-        "@angular-eslint/component-selector": [
-          "error",
-          {
-            "type": "element",
-            "prefix": "app",
-            "style": "kebab-case"
-          }
-        ],
-        "@angular-eslint/directive-selector": [
-          "error",
-          {
-            "type": "attribute",
-            "prefix": "app",
-            "style": "camelCase"
-          }
-        ],
-        "@angular-eslint/use-lifecycle-interface": ["error"],
-        "@typescript-eslint/naming-convention": 0,
-        "simple-import-sort/imports": [
-          "error",
-          {
-            "groups": [
-              // Side effect imports: `import "./setup";`
-              ["^\\\u0000"],
-              // Packages: `import fs from "fs";`
-              ["^@?\\\w"],
-              // Parent imports. Put `..` last.
-              ["^\\\.\\\.(?!/?$)", "^\\\.\\\./?$"],
-              // Other relative imports. Put same-folder imports and `.` last.
-              ["^\\\./(?=.*/)(?!/?$)", "^\\\.(?!/?$)", "^\\\./?$"],
-              // Style imports.
-              ["^.+\\\.s?css$"]
-            ]
-          }
-        ],
-        "no-use-before-define": [
-          "error",
-          {
-            "functions": false,
-            "classes": true,
-            "variables": true,
-            "allowNamedExports": false
-          }
-        ],
-        "@typescript-eslint/member-ordering": [
-          "error",
-          {
-            "default": [
-              "signature",
-              "public-static-field",
-              "protected-static-field",
-              "private-static-field",
-              "public-decorated-field",
-              "protected-decorated-field",
-              "private-decorated-field",
-              "public-instance-field",
-              "protected-instance-field",
-              "private-instance-field",
-              "public-abstract-field",
-              "protected-abstract-field",
-              "public-constructor",
-              "protected-constructor",
-              "private-constructor",
-              "public-abstract-method",
-              "protected-abstract-method",
-              "public-static-method",
-              "protected-static-method",
-              "private-static-method",
-              "public-decorated-method",
-              "protected-decorated-method",
-              "private-decorated-method",
-              "public-instance-method",
-              "protected-instance-method",
-              "private-instance-method"
-            ]
-          }
-        ],
-        "@typescript-eslint/no-confusing-non-null-assertion": "error",
-        "@typescript-eslint/no-confusing-void-expression": [
-          "error",
-          { "ignoreArrowShorthand": true }
-        ],
-        "@typescript-eslint/no-explicit-any": "warn",
-        "@typescript-eslint/no-extra-non-null-assertion": "error",
-        "no-unused-vars": "off", // or "@typescript-eslint/no-unused-vars": "off",
-        "unused-imports/no-unused-imports": "error",
-        "unused-imports/no-unused-vars": [
-          "warn",
-          {
-            "vars": "all",
-            "varsIgnorePattern": "^_",
-            "args": "after-used",
-            "argsIgnorePattern": "^_"
-          }
-        ],
-        "import/order": "off"
-      }
-    },
-    {
-      "files": ["*.html"],
-      "extends": ["plugin:@angular-eslint/template/recommended"],
-      "rules": {}
-    },
-    {
-      "files": ["*.html"],
-      "excludedFiles": ["*inline-template-*.component.html"],
-      "extends": ["plugin:prettier/recommended"],
-      "rules": {
-        "prettier/prettier": ["error", { "parser": "angular" }]
-      }
-    }
-  ]
+	"root": true,
+	"ignorePatterns": [
+		"**/.idea/",
+		"**/.next/",
+		"**/.storybook/",
+		"**/.turbo/",
+		"**/.yarn/",
+		"**/node_modules/",
+		"**/storybook-static/",
+		"**/test-results/"
+	],
+	"overrides": [
+		{
+			"files": ["**/*.ts", "**/*.tsx"],
+			"parserOptions": {
+				"project": ["tsconfig.json", "tsconfig.*.json"],
+				"createDefaultProgram": true
+			},
+			"settings": {
+				"import/resolver": {
+					"typescript": {}
+				}
+			},
+			"plugins": [
+				"@typescript-eslint",
+				"simple-import-sort",
+				"import",
+				"unused-imports"
+			],
+			"extends": [
+				"plugin:prettier/recommended",
+				"plugin:@typescript-eslint/recommended",
+				"plugin:import/recommended",
+				"plugin:import/typescript"
+			],
+			"rules": {
+				"@typescript-eslint/naming-convention": 0,
+				"simple-import-sort/imports": [
+					"error",
+					{
+						"groups": [
+							// Side effect imports: `import "./setup";`
+							["^\\u0000"],
+							// Packages: `import fs from "fs";`
+							["^@?\\w"],
+							// Parent imports. Put `..` last.
+							["^\\.\\.(?!/?$)", "^\\.\\./?$"],
+							// Other relative imports. Put same-folder imports and `.` last.
+							["^\\./(?=.*/)(?!/?$)", "^\\.(?!/?$)", "^\\./?$"],
+							// Style imports.
+							["^.+\\.s?css$"]
+						]
+					}
+				],
+				"no-use-before-define": [
+					"error",
+					{
+						"functions": false,
+						"classes": true,
+						"variables": true,
+						"allowNamedExports": false
+					}
+				],
+				"@typescript-eslint/member-ordering": [
+					"error",
+					{
+						"default": [
+							"signature",
+							"public-static-field",
+							"protected-static-field",
+							"private-static-field",
+							"public-decorated-field",
+							"protected-decorated-field",
+							"private-decorated-field",
+							"public-instance-field",
+							"protected-instance-field",
+							"private-instance-field",
+							"public-abstract-field",
+							"protected-abstract-field",
+							"public-constructor",
+							"protected-constructor",
+							"private-constructor",
+							"public-abstract-method",
+							"protected-abstract-method",
+							"public-static-method",
+							"protected-static-method",
+							"private-static-method",
+							"public-decorated-method",
+							"protected-decorated-method",
+							"private-decorated-method",
+							"public-instance-method",
+							"protected-instance-method",
+							"private-instance-method"
+						]
+					}
+				],
+				"@typescript-eslint/no-confusing-non-null-assertion": "error",
+				"@typescript-eslint/no-confusing-void-expression": [
+					"error",
+					{ "ignoreArrowShorthand": true }
+				],
+				"@typescript-eslint/no-explicit-any": "warn",
+				"@typescript-eslint/no-extra-non-null-assertion": "error",
+				"unused-imports/no-unused-imports": "error",
+				"unused-imports/no-unused-vars": [
+					"warn",
+					{
+						"vars": "all",
+						"varsIgnorePattern": "^_",
+						"args": "after-used",
+						"argsIgnorePattern": "^_"
+					}
+				],
+				"import/order": "off"
+			}
+		},
+		{
+			"files": ["*.html"],
+			"excludedFiles": ["*inline-template-*.component.html"],
+			"extends": ["plugin:prettier/recommended"],
+			"rules": {
+				"prettier/prettier": ["error", { "parser": "angular" }]
+			}
+		}
+	]
 }
 EOF
 
