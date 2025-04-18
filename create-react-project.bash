@@ -6,9 +6,8 @@ set -e # Salir inmediatamente si un comando falla
 echo "🤖 Configurando opciones de proyecto"
 
 # Carpeta de proyecto
-echo "🔧 Carpeta de proyecto o puedes usar la actual usando (.)"
+echo "🔧 Carpeta de proyecto"
 read PROJECT_FOLDER
-PROJECT_FOLDER=${PROJECT_FOLDER:-.} # Usa '.' si el usuario no escribe nada
 
 # Validar carpeta
 if [ -z "$PROJECT_FOLDER" ]; then
@@ -16,151 +15,38 @@ if [ -z "$PROJECT_FOLDER" ]; then
   exit 1
 fi
 
-# Nombre del proyecto
-echo "🔧 Nombre del proyecto"
-read PROJECT_NAME
-
-if [ -z "$PROJECT_NAME" ]; then
-  echo "❌ No se especificó el nombre del proyecto. Saliendo..."
-  exit 1
-fi
-
-# Package Manager
-echo "🔧 Package Manager para el proyecto [npm, pnpm, yarn]"
-read PACKAGE_MANAGER
-
-# Validar package manager
-if [[ "$PACKAGE_MANAGER" != "npm" && "$PACKAGE_MANAGER" != "pnpm" && "$PACKAGE_MANAGER" != "yarn" ]]; then
-  echo "❌ Package manager inválido. Debe ser npm, pnpm o yarn. Saliendo..."
-  exit 1
-fi
-
-# Crear carpeta si es necesario
-if [ "$PROJECT_FOLDER" != "." ]; then
-  echo "🔨 Creando directorio $PROJECT_FOLDER..."
-  mkdir -p "$PROJECT_FOLDER" || { echo "❌ Error al crear la carpeta. Saliendo..."; exit 1; }
-fi
-
-# Cambiar a la carpeta de proyecto
-cd "$PROJECT_FOLDER" || { echo "❌ No se pudo entrar a la carpeta $PROJECT_FOLDER. Saliendo..."; exit 1; }
-
-if [ "$PACKAGE_MANAGER" = "npm" ]; then
-  npm init -y
-  npm pkg set name="$PROJECT_NAME"
-elif [ "$PACKAGE_MANAGER" = "pnpm" ]; then
-  pnpm init
-  pnpm pkg set name="$PROJECT_NAME"
-elif [ "$PACKAGE_MANAGER" = "yarn" ]; then
-  yarn init
-else
-  echo "❌ Package manager no soportado: $PACKAGE_MANAGER"
-  exit 1
-fi
+npm create vite@latest $PROJECT_FOLDER -- --template react-swc-ts
+cd $PROJECT_FOLDER
+npm install
 
 # Instalar Prettier, ESLint y plugins
 echo "🔧 Instalando Prettier, ESLint y plugins adicionales..."
 
-INSTALL_PACKAGES="ts-node typescript sinon jest ts-jest @jest/globals @types/jest @types/sinon @types/node prettier prettier-eslint eslint-config-prettier eslint-plugin-prettier @typescript-eslint/eslint-plugin @typescript-eslint/parser eslint-plugin-simple-import-sort eslint-plugin-unused-imports eslint-plugin-import eslint-import-resolver-typescript @eslint/compat @eslint/js @eslint/eslintrc"
+INSTALL_PACKAGES="ts-node sinon jest ts-jest @jest/globals @types/jest @types/sinon @types/node prettier prettier-eslint eslint-config-prettier eslint-plugin-prettier @typescript-eslint/eslint-plugin @typescript-eslint/parser eslint-plugin-simple-import-sort eslint-plugin-unused-imports eslint-plugin-import eslint-import-resolver-typescript @eslint/compat @eslint/js @eslint/eslintrc"
 
-# Agregar script lint al package.json
-# Agregar script lint:fix al package.json
-# Auditando dependencias
-echo "🔎 Auditando dependencias..."
-echo "🔧 Agregando script 'lint' en package.json..."
-echo "🔧 Agregando script 'lint:fix' en package.json..."
-echo "🔧 Agregando script 'unit' en package.json..."
-echo "🔧 Agregando script 'unit:coverage' en package.json..."
-echo "🔧 Agregando script 'build' en package.json..."
-if [ "$PACKAGE_MANAGER" = "npm" ]; then
-  npm install -D $INSTALL_PACKAGES
-  npm audit fix --force || echo "⚠️  Algunas vulnerabilidades no se pudieron corregir automáticamente."
-  npx npm-add-script -k "lint" -v "npx eslint ."
-  npx npm-add-script -k "lint:fix" -v "npx eslint --fix --ext .ts"
-  npx npm-add-script -k "unit" -v "npx run jest"
-  npx npm-add-script -k "unit:coverage" -v "npx run jest --coverage"
-  npx npm-add-script -k "build" -v "tsc"
-elif [ "$PACKAGE_MANAGER" = "pnpm" ]; then
-  pnpm add -D $INSTALL_PACKAGES
-  pnpm audit || echo "⚠️  Algunas vulnerabilidades no se pudieron corregir automáticamente."
-  pnpm dlx npm-add-script -k "lint" -v "pnpm exec eslint ."
-  pnpm dlx npm-add-script -k "lint:fix" -v "pnpm exec eslint --fix --ext .ts"
-  pnpm dlx npm-add-script -k "unit" -v "npx run jest"
-  pnpm dlx npm-add-script -k "unit:coverage" -v "npx run jest --coverage"
-  pnpm dlx npm-add-script -k "build" -v "tsc"
-elif [ "$PACKAGE_MANAGER" = "yarn" ]; then
-  yarn add -D $INSTALL_PACKAGES
-  yarn audit || echo "⚠️  Algunas vulnerabilidades no se pudieron corregir automáticamente."
-  npx npm-add-script -k "lint" -v "npx eslint ."
-  npx npm-add-script -k "lint:fix" -v "npx eslint --fix --ext .ts"
-  npx npm-add-script -k "unit" -v "npx run jest"
-  npx npm-add-script -k "unit:coverage" -v "npx run jest --coverage"
-  npx npm-add-script -k "build" -v "tsc"
-else
-  echo "❌ Package manager no soportado: $PACKAGE_MANAGER"
-  exit 1
-fi
+npm install -D $INSTALL_PACKAGES
+npm audit fix --force || echo "⚠️  Algunas vulnerabilidades no se pudieron corregir automáticamente."
+npx npm-add-script -k "lint:fix" -v "npx eslint --fix ."
+npx npm-add-script -k "unit" -v "npx run jest"
+npx npm-add-script -k "unit:coverage" -v "npx run jest --coverage"
 
+echo "📝 Creando archivos y carpetas de clean architecture"
+mkdir src/modules src/modules/core src/modules/core/presentation src/modules/core/domain src/modules/core/domain/models src/modules/core/domain/models/either
+mv src/App.tsx src/modules/core/presentation && mv src/App.css src/modules/core/presentation
+rm eslint.config.js
 
-# Agregar tsconfig
-echo "🚀 Agregando tsconfig.ts"
-cat > tsconfig.json << 'EOF'
-/* To learn more about this file see: https://angular.io/config/tsconfig. */
-{
-  "compileOnSave": false,
-  "compilerOptions": {
-    "outDir": "./dist/out-tsc",
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "noImplicitOverride": true,
-    "noPropertyAccessFromIndexSignature": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "esModuleInterop": true,
-    "sourceMap": true,
-    "declaration": false,
-    "experimentalDecorators": true,
-    "moduleResolution": "node",
-    "importHelpers": true,
-    "target": "ES2022",
-    "module": "ES2022",
-    "useDefineForClassFields": false,
-    "lib": [
-      "ES2022",
-      "dom"
-    ]
-  }
-}
-EOF
+cat > src/main.tsx << 'EOF'
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './modules/core/presentation/App.tsx'
 
-cat > tsconfig.app.json << 'EOF'
-/* To learn more about this file see: https://angular.io/config/tsconfig. */
-{
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "outDir": "./out-tsc/app",
-    "types": []
-  },
-  "files": [
-    "src/main.ts"
-  ],
-  "include": [
-    "src/**/*.d.ts"
-  ]
-}
-EOF
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
 
-cat > tsconfig.spec.json << 'EOF'
-/* To learn more about this file see: https://angular.io/config/tsconfig. */
-{
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "outDir": "./out-tsc/spec",
-  },
-  "include": [
-    "src/**/*.spec.ts",
-    "src/**/*.d.ts"
-  ]
-}
 EOF
 
 # Agrega un .editorconfig
@@ -190,19 +76,14 @@ max_line_length = off
 trim_trailing_whitespace = false
 EOF
 
-echo "📝 Creando archivos y carpetas de clean architecture"
-mkdir src src/domain src/domain/models src/domain/models/either src/domain/ports src/domain/ports/gateways src/domain/ports/utils src/domain/commands src/domain/queries src/driven-adapters src/driven-adapters/tests src/entry-points src/entry-points/tests src/libraries
-cat > src/main.ts << 'EOF'
-console.log("Hello World")
-EOF
-
-cat > src/domain/models/either/value-types.ts << 'EOF'
+cat > src/modules/core/domain/models/either/value-types.ts << 'EOF'
 import { Either } from './either';
 
 export type Ok<T> = Either<T, never>;
 export type ErrorType<E> = Either<never, E>;
 EOF
-cat > src/domain/models/either/either.ts << 'EOF'
+
+cat > src/modules/core/domain/models/either/either.ts << 'EOF'
 import { ErrorType, Ok } from './value-types';
 
 interface FoldExpression<R, E, T> {
@@ -696,7 +577,7 @@ export default {
 EOF
 
 # Mensaje final
-echo "✅ Proyecto configurado en '$PROJECT_FOLDER' con nombre '$PROJECT_NAME' usando '$PACKAGE_MANAGER'"
+echo "✅ Proyecto configurado en '$PROJECT_FOLDER'"
 echo "🎉 Agregado exitosamente ESLint + Prettier + configuraciones de VSCode listas."
 echo "📦 Extensiones de VSCode recomendadas: dbaeumer.vscode-eslint y esbenp.prettier-vscode"
 echo "🚀 Puedes empezar a desarrollar"
