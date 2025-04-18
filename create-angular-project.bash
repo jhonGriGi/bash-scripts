@@ -215,7 +215,7 @@ EOF
 echo "📝 Creando configuración Prettier..."
 cat > .prettierrc << 'EOF'
 {
-  "tabWidth": 2,
+  "tabWidth": 4,
   "useTabs": false,
   "singleQuote": true,
   "semi": true,
@@ -265,7 +265,7 @@ root = true
 
 [*]
 charset = utf-8
-indent_style = tab
+indent_style = space
 indent_size = 4
 insert_final_newline = true
 trim_trailing_whitespace = true

@@ -170,7 +170,7 @@ root = true
 
 [*]
 charset = utf-8
-indent_style = tab
+itabndent_style = space
 indent_size = 4
 insert_final_newline = true
 trim_trailing_whitespace = true
@@ -396,7 +396,7 @@ echo "📝 Creando configuración Prettier..."
 cat > .prettierrc << 'EOF'
 {
   "tabWidth": 4,
-  "useTabs": true,
+  "useTabs": false,
   "singleQuote": true,
   "semi": true,
   "bracketSpacing": true,
