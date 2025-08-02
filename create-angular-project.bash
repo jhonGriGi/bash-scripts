@@ -36,21 +36,7 @@ ng add @angular-eslint/schematics --skip-confirmation
 
 # Instalar Prettier, ESLint y plugins
 echo "🔧 Instalando Prettier, ESLint y plugins adicionales..."
-npm install -D \
-  prettier \
-  prettier-eslint \
-  eslint-config-prettier \
-  eslint-plugin-prettier \
-  @typescript-eslint/eslint-plugin \
-  @typescript-eslint/parser \
-  eslint-plugin-simple-import-sort \
-  eslint-plugin-unused-imports \
-  eslint-plugin-import \
-  eslint-import-resolver-typescript \
-  puppeteer \
-  @eslint/compat \
-  @eslint/js \
-  @eslint/eslintrc
+npm install -D eslint @antfu/eslint-config
 
 # Auditando dependencias
 npm audit fix --force || echo "⚠️  Algunas vulnerabilidades no se pudieron corregir automáticamente."
@@ -63,186 +49,24 @@ fi
 # Crear archivo .eslintrc.json
 echo "📝 Creando configuración ESLint..."
 cat > eslint.config.mjs << 'EOF'
-import { defineConfig, globalIgnores } from "eslint/config";
-import { fixupConfigRules, fixupPluginRules, fixupConfigRules, fixupConfigRules } from "@eslint/compat";
-import typescriptEslint from "@typescript-eslint/eslint-plugin";
-import simpleImportSort from "eslint-plugin-simple-import-sort";
-import _import from "eslint-plugin-import";
-import unusedImports from "eslint-plugin-unused-imports";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import js from "@eslint/js";
-import { FlatCompat } from "@eslint/eslintrc";
+// eslint.config.mjs
+import antfu from '@antfu/eslint-config';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const compat = new FlatCompat({
-    baseDirectory: __dirname,
-    recommendedConfig: js.configs.recommended,
-    allConfig: js.configs.all
+export default antfu({
+    typescript: true,
+    formatters: true,
+    stylistic: {
+        semi: true,
+        indent: 4,
+        quotes: 'single',
+    },
+    rules: {
+        'unicorn/filename-case': ['error', {
+            case: 'kebabCase',
+            ignore: ['README.md'],
+        }],
+    },
 });
-
-export default defineConfig([globalIgnores(["projects/**/*"]), {
-    files: ["**/*.ts"],
-
-    extends: fixupConfigRules(compat.extends(
-        "plugin:@angular-eslint/recommended",
-        "plugin:@angular-eslint/template/process-inline-templates",
-        "plugin:prettier/recommended",
-        "plugin:@typescript-eslint/recommended",
-        "plugin:import/recommended",
-        "plugin:import/typescript",
-    )),
-
-    plugins: {
-        "@typescript-eslint": fixupPluginRules(typescriptEslint),
-        "simple-import-sort": simpleImportSort,
-        import: fixupPluginRules(_import),
-        "unused-imports": unusedImports,
-    },
-
-    languageOptions: {
-        ecmaVersion: 5,
-        sourceType: "script",
-
-        parserOptions: {
-            project: ["tsconfig.json"],
-            createDefaultProgram: true,
-        },
-    },
-
-    settings: {
-        "import/resolver": {
-            typescript: {},
-        },
-    },
-
-    rules: {
-        "@angular-eslint/component-class-suffix": ["error", {
-            suffixes: ["Page", "Component"],
-        }],
-
-        "@angular-eslint/component-selector": ["error", {
-            type: "element",
-            prefix: "app",
-            style: "kebab-case",
-        }],
-
-        "@angular-eslint/directive-selector": ["error", {
-            type: "attribute",
-            prefix: "app",
-            style: "camelCase",
-        }],
-
-        "@angular-eslint/use-lifecycle-interface": ["error"],
-        "@typescript-eslint/naming-convention": 0,
-
-        "simple-import-sort/imports": ["error", {
-            groups: [
-                ["^\\u0000"],
-                ["^@?\\w"],
-                ["^\\.\\.(?!/?$)", "^\\.\\./?$"],
-                ["^\\./(?=.*/)(?!/?$)", "^\\.(?!/?$)", "^\\./?$"],
-                ["^.+\\.s?css$"],
-            ],
-        }],
-
-        "no-use-before-define": ["error", {
-            functions: false,
-            classes: true,
-            variables: true,
-            allowNamedExports: false,
-        }],
-
-        "@typescript-eslint/member-ordering": ["error", {
-            default: [
-                "signature",
-                "public-static-field",
-                "protected-static-field",
-                "private-static-field",
-                "public-decorated-field",
-                "protected-decorated-field",
-                "private-decorated-field",
-                "public-instance-field",
-                "protected-instance-field",
-                "private-instance-field",
-                "public-abstract-field",
-                "protected-abstract-field",
-                "public-constructor",
-                "protected-constructor",
-                "private-constructor",
-                "public-abstract-method",
-                "protected-abstract-method",
-                "public-static-method",
-                "protected-static-method",
-                "private-static-method",
-                "public-decorated-method",
-                "protected-decorated-method",
-                "private-decorated-method",
-                "public-instance-method",
-                "protected-instance-method",
-                "private-instance-method",
-            ],
-        }],
-
-        "@typescript-eslint/no-confusing-non-null-assertion": "error",
-
-        "@typescript-eslint/no-confusing-void-expression": ["error", {
-            ignoreArrowShorthand: true,
-        }],
-
-        "@typescript-eslint/no-explicit-any": "warn",
-        "@typescript-eslint/no-extra-non-null-assertion": "error",
-        "no-unused-vars": "off",
-        "unused-imports/no-unused-imports": "error",
-
-        "unused-imports/no-unused-vars": ["warn", {
-            vars: "all",
-            varsIgnorePattern: "^_",
-            args: "after-used",
-            argsIgnorePattern: "^_",
-        }],
-
-        "import/order": "off",
-    },
-}, {
-    files: ["**/*.html"],
-    extends: fixupConfigRules(compat.extends("plugin:@angular-eslint/template/recommended")),
-    rules: {},
-}, {
-    files: ["**/*.html"],
-    ignores: ["**/*inline-template-*.component.html"],
-    extends: fixupConfigRules(compat.extends("plugin:prettier/recommended")),
-
-    rules: {
-        "prettier/prettier": ["error", {
-            parser: "angular",
-        }],
-    },
-}]);
-EOF
-
-# Crear archivo .prettierrc
-echo "📝 Creando configuración Prettier..."
-cat > .prettierrc << 'EOF'
-{
-  "tabWidth": 4,
-  "useTabs": false,
-  "singleQuote": true,
-  "semi": true,
-  "bracketSpacing": true,
-  "arrowParens": "avoid",
-  "trailingComma": "es5",
-  "bracketSameLine": true,
-  "printWidth": 80
-}
-EOF
-
-# Crear archivo .prettierignore
-echo "📝 Creando archivo .prettierignore..."
-cat > .prettierignore << 'EOF'
-dist
-node_modules
 EOF
 
 # Crear carpeta .vscode y settings.json

@@ -25,15 +25,37 @@ if [ -z "$PROJECT_NAME" ]; then
   exit 1
 fi
 
-# Package Manager
-echo "🔧 Package Manager para el proyecto [npm, pnpm, yarn]"
-read PACKAGE_MANAGER
+echo "🔧 Choose a package manager [npm, pnpm, yarn]"
 
-# Validar package manager
-if [[ "$PACKAGE_MANAGER" != "npm" && "$PACKAGE_MANAGER" != "pnpm" && "$PACKAGE_MANAGER" != "yarn" ]]; then
-  echo "❌ Package manager inválido. Debe ser npm, pnpm o yarn. Saliendo..."
-  exit 1
-fi
+options=("npm" "yarn" "pnpm")
+select opt in "${options[@]}"
+do
+  case $opt in
+    "npm")
+      echo "📦 Initializing project with npm..."
+      npm init -y
+      npm pkg set name="$PROJECT_NAME"
+      PACKAGE_MANAGER="npm"
+      break
+      ;;
+    "yarn")
+      echo "📦 Initializing project with yarn..."
+      yarn init -y
+      PACKAGE_MANAGER="yarn"
+      break
+      ;;
+    "pnpm")
+      echo "📦 Initializing project with pnpm..."
+      pnpm init
+      pnpm pkg set name="$PROJECT_NAME"
+      PACKAGE_MANAGER="pnpm"
+      break
+      ;;
+    *)
+      echo "❗ Invalid option: $REPLY"
+      ;;
+  esac
+done
 
 # Crear carpeta si es necesario
 if [ "$PROJECT_FOLDER" != "." ]; then
@@ -44,23 +66,10 @@ fi
 # Cambiar a la carpeta de proyecto
 cd "$PROJECT_FOLDER" || { echo "❌ No se pudo entrar a la carpeta $PROJECT_FOLDER. Saliendo..."; exit 1; }
 
-if [ "$PACKAGE_MANAGER" = "npm" ]; then
-  npm init -y
-  npm pkg set name="$PROJECT_NAME"
-elif [ "$PACKAGE_MANAGER" = "pnpm" ]; then
-  pnpm init
-  pnpm pkg set name="$PROJECT_NAME"
-elif [ "$PACKAGE_MANAGER" = "yarn" ]; then
-  yarn init
-else
-  echo "❌ Package manager no soportado: $PACKAGE_MANAGER"
-  exit 1
-fi
-
 # Instalar Prettier, ESLint y plugins
-echo "🔧 Instalando Prettier, ESLint y plugins adicionales..."
+echo "🔧 Instalando ESLint y plugins adicionales..."
 
-INSTALL_PACKAGES="ts-node typescript sinon jest ts-jest @jest/globals @types/jest @types/sinon @types/node prettier prettier-eslint eslint-config-prettier eslint-plugin-prettier @typescript-eslint/eslint-plugin @typescript-eslint/parser eslint-plugin-simple-import-sort eslint-plugin-unused-imports eslint-plugin-import eslint-import-resolver-typescript @eslint/compat @eslint/js @eslint/eslintrc"
+INSTALL_PACKAGES="ts-node typescript jest ts-jest @jest/globals @types/jest @types/node eslint @antfu/eslint-config"
 
 # Agregar script lint al package.json
 # Agregar script lint:fix al package.json
@@ -257,166 +266,29 @@ export class Either<T, E> {
 EOF
 
 # Comando para crear proyecto
-echo "🚀 Agregando Eslint y Prettier"
+echo "🚀 Agregando Eslint"
 
 # Crear archivo .eslintrc.json
 echo "📝 Creando configuración ESLint..."
 cat > eslint.config.mjs << 'EOF'
-import { defineConfig, globalIgnores } from "eslint/config";
-import { fixupConfigRules, fixupPluginRules } from "@eslint/compat";
-import typescriptEslint from "@typescript-eslint/eslint-plugin";
-import simpleImportSort from "eslint-plugin-simple-import-sort";
-import _import from "eslint-plugin-import";
-import unusedImports from "eslint-plugin-unused-imports";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import js from "@eslint/js";
-import { FlatCompat } from "@eslint/eslintrc";
+// eslint.config.mjs
+import antfu from '@antfu/eslint-config';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const compat = new FlatCompat({
-    baseDirectory: __dirname,
-    recommendedConfig: js.configs.recommended,
-    allConfig: js.configs.all
-});
-
-export default defineConfig([globalIgnores([
-    "**/.idea/",
-    "**/.next/",
-    "**/.storybook/",
-    "**/.turbo/",
-    "**/.yarn/",
-    "**/node_modules/",
-    "**/storybook-static/",
-    "**/test-results/",
-]), {
-    files: ["**/*.ts", "**/*.tsx"],
-
-    extends: fixupConfigRules(compat.extends(
-        "plugin:prettier/recommended",
-        "plugin:@typescript-eslint/recommended",
-        "plugin:import/recommended",
-        "plugin:import/typescript",
-    )),
-
-    plugins: {
-        "@typescript-eslint": fixupPluginRules(typescriptEslint),
-        "simple-import-sort": simpleImportSort,
-        import: fixupPluginRules(_import),
-        "unused-imports": unusedImports,
+export default antfu({
+    typescript: true,
+    formatters: true,
+    stylistic: {
+        semi: true,
+        indent: 4,
+        quotes: 'single',
     },
-
-    languageOptions: {
-        ecmaVersion: 5,
-        sourceType: "script",
-
-        parserOptions: {
-            project: ["tsconfig.json", "tsconfig.*.json"],
-            createDefaultProgram: true,
-        },
-    },
-
-    settings: {
-        "import/resolver": {
-            typescript: {},
-        },
-    },
-
     rules: {
-        "@typescript-eslint/naming-convention": 0,
-
-        "simple-import-sort/imports": ["error", {
-            groups: [
-                ["^\\u0000"],
-                ["^@?\\w"],
-                ["^\\.\\.(?!/?$)", "^\\.\\./?$"],
-                ["^\\./(?=.*/)(?!/?$)", "^\\.(?!/?$)", "^\\./?$"],
-                ["^.+\\.s?css$"],
-            ],
+        'unicorn/filename-case': ['error', {
+            case: 'kebabCase',
+            ignore: ['README.md'],
         }],
-
-        "no-use-before-define": ["error", {
-            functions: false,
-            classes: true,
-            variables: true,
-            allowNamedExports: false,
-        }],
-
-        "@typescript-eslint/member-ordering": ["error", {
-            default: [
-                "signature",
-                "public-static-field",
-                "protected-static-field",
-                "private-static-field",
-                "public-decorated-field",
-                "protected-decorated-field",
-                "private-decorated-field",
-                "public-instance-field",
-                "protected-instance-field",
-                "private-instance-field",
-                "public-abstract-field",
-                "protected-abstract-field",
-                "public-constructor",
-                "protected-constructor",
-                "private-constructor",
-                "public-abstract-method",
-                "protected-abstract-method",
-                "public-static-method",
-                "protected-static-method",
-                "private-static-method",
-                "public-decorated-method",
-                "protected-decorated-method",
-                "private-decorated-method",
-                "public-instance-method",
-                "protected-instance-method",
-                "private-instance-method",
-            ],
-        }],
-
-        "@typescript-eslint/no-confusing-non-null-assertion": "error",
-
-        "@typescript-eslint/no-confusing-void-expression": ["error", {
-            ignoreArrowShorthand: true,
-        }],
-
-        "@typescript-eslint/no-explicit-any": "warn",
-        "@typescript-eslint/no-extra-non-null-assertion": "error",
-        "unused-imports/no-unused-imports": "error",
-
-        "unused-imports/no-unused-vars": ["warn", {
-            vars: "all",
-            varsIgnorePattern: "^_",
-            args: "after-used",
-            argsIgnorePattern: "^_",
-        }],
-
-        "import/order": "off",
     },
-}]);
-EOF
-
-# Crear archivo .prettierrc
-echo "📝 Creando configuración Prettier..."
-cat > .prettierrc << 'EOF'
-{
-  "tabWidth": 4,
-  "useTabs": false,
-  "singleQuote": true,
-  "semi": true,
-  "bracketSpacing": true,
-  "arrowParens": "avoid",
-  "trailingComma": "es5",
-  "bracketSameLine": true,
-  "printWidth": 80
-}
-EOF
-
-# Crear archivo .prettierignore
-echo "📝 Creando archivo .prettierignore..."
-cat > .prettierignore << 'EOF'
-dist
-node_modules
+});
 EOF
 
 # Crear carpeta .vscode y settings.json
